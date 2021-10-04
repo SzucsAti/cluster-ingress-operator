@@ -29,10 +29,13 @@ github.com/Azure/go-autorest/tracing
 # github.com/IBM/go-sdk-core/v4 v4.9.0
 ## explicit
 github.com/IBM/go-sdk-core/v4/core
-# github.com/IBM/networking-go-sdk v0.14.0
+# github.com/IBM/go-sdk-core/v5 v5.4.5
+github.com/IBM/go-sdk-core/v5/core
+# github.com/IBM/networking-go-sdk v0.22.0
 ## explicit
 github.com/IBM/networking-go-sdk/common
 github.com/IBM/networking-go-sdk/dnsrecordsv1
+github.com/IBM/networking-go-sdk/dnssvcsv1
 # github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef
 github.com/asaskevich/govalidator
 # github.com/aws/aws-sdk-go v1.38.49

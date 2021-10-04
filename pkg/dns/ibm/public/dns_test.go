@@ -8,7 +8,7 @@ import (
 	configv1 "github.com/openshift/api/config/v1"
 	iov1 "github.com/openshift/api/operatoringress/v1"
 
-	dnsclient "github.com/openshift/cluster-ingress-operator/pkg/dns/ibm/client"
+	dnsclient "github.com/openshift/cluster-ingress-operator/pkg/dns/ibm/public/client"
 )
 
 func TestDelete(t *testing.T) {

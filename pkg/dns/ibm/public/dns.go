@@ -10,7 +10,7 @@ import (
 	"github.com/IBM/networking-go-sdk/dnsrecordsv1"
 	configv1 "github.com/openshift/api/config/v1"
 	"github.com/openshift/cluster-ingress-operator/pkg/dns"
-	dnsclient "github.com/openshift/cluster-ingress-operator/pkg/dns/ibm/client"
+	dnsclient "github.com/openshift/cluster-ingress-operator/pkg/dns/ibm/public/client"
 
 	iov1 "github.com/openshift/api/operatoringress/v1"
 	logf "github.com/openshift/cluster-ingress-operator/pkg/log"

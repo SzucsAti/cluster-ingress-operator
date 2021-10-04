@@ -17,7 +17,6 @@ import (
 	awsdns "github.com/openshift/cluster-ingress-operator/pkg/dns/aws"
 	azuredns "github.com/openshift/cluster-ingress-operator/pkg/dns/azure"
 	gcpdns "github.com/openshift/cluster-ingress-operator/pkg/dns/gcp"
-	ibmdns "github.com/openshift/cluster-ingress-operator/pkg/dns/ibm"
 	logf "github.com/openshift/cluster-ingress-operator/pkg/log"
 	"github.com/openshift/cluster-ingress-operator/pkg/manifests"
 	"github.com/openshift/cluster-ingress-operator/pkg/operator/controller"
@@ -587,7 +586,7 @@ func (r *reconciler) createDNSProvider(dnsConfig *configv1.DNS, platformStatus *
 		if err != nil {
 			return nil, fmt.Errorf("failed to create IBM DNS manager: %v", err)
 		}
-		dnsProvider = provider
+
 	default:
 		dnsProvider = &dns.FakeProvider{}
 	}
