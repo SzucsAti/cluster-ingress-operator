@@ -563,6 +563,7 @@ func (r *reconciler) createDNSProvider(dnsConfig *configv1.DNS, platformStatus *
 		}
 		dnsProvider = provider
 	case configv1.IBMCloudPlatformType:
+<<<<<<< HEAD
 		if infraStatus.ControlPlaneTopology == configv1.ExternalTopologyMode {
 			log.Info("using fake DNS provider because cluster's ControlPlaneTopology is External")
 			return &dns.FakeProvider{}, nil
@@ -570,6 +571,11 @@ func (r *reconciler) createDNSProvider(dnsConfig *configv1.DNS, platformStatus *
 		if platformStatus.IBMCloud.CISInstanceCRN == "" {
 			return nil, fmt.Errorf("missing cis instance crn")
 		}
+=======
+		// https://github.ibm.com/alchemy-containers/armada-ipi-upi-planning/issues/125
+		publish := "Internal"
+
+>>>>>>> 54ff6384 (Temporary)
 		zones := []string{}
 		if dnsConfig.Spec.PrivateZone != nil {
 			zones = append(zones, dnsConfig.Spec.PrivateZone.ID)
@@ -577,6 +583,7 @@ func (r *reconciler) createDNSProvider(dnsConfig *configv1.DNS, platformStatus *
 		if dnsConfig.Spec.PublicZone != nil {
 			zones = append(zones, dnsConfig.Spec.PublicZone.ID)
 		}
+<<<<<<< HEAD
 		provider, err := ibmdns.NewProvider(ibmdns.Config{
 			APIKey:    string(creds.Data["ibmcloud_api_key"]),
 			CISCRN:    platformStatus.IBMCloud.CISInstanceCRN,
@@ -585,8 +592,40 @@ func (r *reconciler) createDNSProvider(dnsConfig *configv1.DNS, platformStatus *
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create IBM DNS manager: %v", err)
-		}
+=======
 
+		if publish == "External" {
+			log.Info("init public dns provider", "publish", publish)
+			if platformStatus.IBMCloud.CISInstanceCRN == "" {
+				return nil, fmt.Errorf("missing cis instance crn")
+			}
+			provider, err := ibmpublicdns.NewProvider(ibmpublicdns.Config{
+				APIKey:    string(creds.Data["ibmcloud_api_key"]),
+				CISCRN:    platformStatus.IBMCloud.CISInstanceCRN,
+				Zones:     zones,
+				UserAgent: userAgent,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("failed to create IBM DNS manager: %v", err)
+			}
+			dnsProvider = provider
+		} else {
+			log.Info("init private dns provider", "publish", publish)
+			// if platformStatus.IBMCloud.DNSSERVICESInstanceID == "" {
+			// 	return nil, fmt.Errorf("missing dns services instance crn")
+			// }
+			provider, err := ibmprivatedns.NewProvider(ibmprivatedns.Config{
+				APIKey:     string(creds.Data["ibmcloud_api_key"]),
+				InstanceID: "7c786ae5-3eeb-4a99-bd9c-35e199eb85b3",
+				Zones:      zones,
+				UserAgent:  userAgent,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("failed to create IBM DNS manager: %v", err)
+			}
+			dnsProvider = provider
+>>>>>>> 54ff6384 (Temporary)
+		}
 	default:
 		dnsProvider = &dns.FakeProvider{}
 	}

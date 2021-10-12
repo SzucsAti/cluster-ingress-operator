@@ -30,6 +30,7 @@ github.com/Azure/go-autorest/tracing
 ## explicit
 github.com/IBM/go-sdk-core/v4/core
 # github.com/IBM/go-sdk-core/v5 v5.4.5
+## explicit
 github.com/IBM/go-sdk-core/v5/core
 # github.com/IBM/networking-go-sdk v0.22.0
 ## explicit
