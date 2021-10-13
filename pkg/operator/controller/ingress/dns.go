@@ -106,6 +106,10 @@ func desiredWildcardDNSRecord(ic *operatorv1.IngressController, service *corev1.
 		target = ingress.IP
 	}
 
+	//remove later
+	target = "1.2.3.4"
+	recordType = iov1.ARecordType
+
 	trueVar := true
 	return true, &iov1.DNSRecord{
 		ObjectMeta: metav1.ObjectMeta{

@@ -260,10 +260,10 @@ func (r *reconciler) publishRecordToZones(zones []configv1.DNSZone, record *iov1
 		// Only publish the record if the DNSRecord has been modified
 		// (which would mean the target could have changed) or its
 		// status does not indicate that it has already been published.
-		if record.Generation == record.Status.ObservedGeneration && recordIsAlreadyPublishedToZone(record, &zone) {
-			log.Info("skipping zone to which the DNS record is already published", "record", record.Spec, "dnszone", zone)
-			continue
-		}
+		// if record.Generation == record.Status.ObservedGeneration && recordIsAlreadyPublishedToZone(record, &zone) {
+		// 	log.Info("skipping zone to which the DNS record is already published", "record", record.Spec, "dnszone", zone)
+		// 	continue
+		// }
 
 		condition := iov1.DNSZoneCondition{
 			Status:             string(operatorv1.ConditionUnknown),

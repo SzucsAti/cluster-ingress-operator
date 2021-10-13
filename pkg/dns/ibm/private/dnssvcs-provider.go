@@ -3,6 +3,7 @@ package private
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/IBM/go-sdk-core/v5/core"
@@ -32,18 +33,16 @@ type Config struct {
 	Zones      []string
 }
 
+const ZONEIDFORTESTING = "d3787058-cbe7-4986-8c2a-b8e5758364e5"
+
+type ResourceCNAMERecordRdata struct {
+	cname string
+}
+type ResourceARecordRdata struct {
+	ip string
+}
 type ResourceRecordRdata struct {
-	// Port number of the target server.
-	Port *int64 `json:"port" validate:"required"`
-
-	// Priority of the SRV record.
-	Priority *int64 `json:"priority" validate:"required"`
-
-	// Hostname of the target server.
-	Target *string `json:"target" validate:"required"`
-
-	// Weight of distributing queries among multiple target servers.
-	Weight *int64 `json:"weight" validate:"required"`
+	rData map[string]*string
 }
 
 func NewProvider(config Config) (*Provider, error) {
@@ -117,12 +116,12 @@ func (p *Provider) Delete(record *iov1.DNSRecord, zone configv1.DNSZone) error {
 	for _, target := range record.Spec.Targets {
 		for _, record := range result.ResourceRecords {
 
-			rData, ok := record.Rdata.(*ResourceRecordRdata)
+			rData, ok := record.Rdata.(*ResourceCNAMERecordRdata)
 			if !ok {
 				return fmt.Errorf("delete: failed to get resource data: %w", record.Rdata)
 			}
 
-			if *rData.Target == target {
+			if rData.cname == target {
 				delOpt := dnsService.NewDeleteResourceRecordOptions(p.config.InstanceID, zone.ID, *record.ID)
 				delResponse, err := dnsService.DeleteResourceRecord(delOpt)
 				if err != nil {
@@ -147,7 +146,7 @@ func validateDNSServices(provider *Provider) error {
 	for _, dnsService := range provider.dnsServices {
 
 		listDnszoneOptions := dnsService.NewListDnszonesOptions(provider.config.InstanceID)
-		_, response, reqErr := dnsService.ListDnszones(listDnszoneOptions)
+		listResult, response, reqErr := dnsService.ListDnszones(listDnszoneOptions)
 		if reqErr != nil {
 			errs = append(errs, fmt.Errorf("failed to get dns zones: %v", reqErr))
 		}
@@ -155,9 +154,10 @@ func validateDNSServices(provider *Provider) error {
 			fmt.Println("Response: ", response)
 		}
 
+		// Maybe change/remove later
 		getDnszoneOptions := dnsService.NewGetDnszoneOptions(
 			provider.config.InstanceID,
-			"szucsati-ipi-dnsservice.com")
+			*listResult.Dnszones[0].ID)
 		result, response, reqErr := dnsService.GetDnszone(getDnszoneOptions)
 		if reqErr != nil {
 			panic(reqErr)
@@ -169,7 +169,12 @@ func validateDNSServices(provider *Provider) error {
 	return kerrors.NewAggregate(errs)
 }
 
+// Request JSON payload error: ttl in body should be one of [1 60 120 300 600 900 1800 3600 7200 18000 43200]"}
+
 func (p *Provider) createOrUpdateDNSRecord(record *iov1.DNSRecord, zone configv1.DNSZone) error {
+
+	log.Info("createOrUpdateDNSRecord justfortesting")
+
 	if err := validateInputDNSData(record, zone); err != nil {
 		return fmt.Errorf("createOrUpdateDNSRecord: invalid dns input data: %w", err)
 	}
@@ -178,23 +183,76 @@ func (p *Provider) createOrUpdateDNSRecord(record *iov1.DNSRecord, zone configv1
 		return fmt.Errorf("createOrUpdateDNSRecord: unknown zone: %v", zone.ID)
 	}
 
-	getOpt := dnsService.NewGetResourceRecordOptions(p.config.InstanceID, zone.ID, record.Spec.DNSName)
+	listOpt := dnsService.NewListResourceRecordsOptions(p.config.InstanceID, ZONEIDFORTESTING)
+	// Some dns records (e.g. wildcard record) have an ending "." character in the DNSName
+	DNSName := strings.TrimSuffix(record.Spec.DNSName, ".")
+
+	listResult, response, err := dnsService.ListResourceRecords(listOpt)
+	if err != nil {
+		if response != nil && response.StatusCode != http.StatusNotFound {
+			return fmt.Errorf("createOrUpdateDNSRecord: failed to list the dns record: %w", err)
+		}
+	}
+	if listResult == nil {
+		return fmt.Errorf("createOrUpdateDNSRecord: invalid result")
+	}
 	// Some dns records (e.g. wildcard record) have an ending "." character in the DNSName
 	//DNSName := strings.TrimSuffix(record.Spec.DNSName, ".")
 	for _, target := range record.Spec.Targets {
-		result, response, err := dnsService.GetResourceRecord(getOpt)
-		if err != nil {
-			if response != nil && response.StatusCode != http.StatusNotFound {
-				return fmt.Errorf("createOrUpdateDNSRecord: failed to get the dns record: %w", err)
+		update := false
+		for _, resourceRecord := range listResult.ResourceRecords {
+
+			var resourceRecordTarget string
+			if *resourceRecord.Type == "CNAME" {
+				log.Info("createOrUpdateDNSRecord justfortesting in CNAME")
+				rData, ok := resourceRecord.Rdata.(map[string]interface{})
+				if !ok {
+					return fmt.Errorf("delete: failed to get resource data: %w", resourceRecord.Rdata)
+				}
+				resourceRecordTarget = fmt.Sprint(rData["cname"])
 			}
-			continue
+			if *resourceRecord.Type == "A" {
+				fmt.Printf("Response: %s", response)
+				fmt.Printf("ResourceRecord: %v", resourceRecord)
+				fmt.Printf("ResourceRecord Rdata: %v", resourceRecord.Rdata)
+				log.Info("createOrUpdateDNSRecord justfortesting in A")
+				rData, ok := resourceRecord.Rdata.(map[string]interface{})
+				if !ok {
+					return fmt.Errorf("delete: A record - failed to get resource data: %w", resourceRecord.Rdata)
+				}
+				resourceRecordTarget = fmt.Sprint(rData["ip"])
+			}
+
+			if *resourceRecord.Name == DNSName && resourceRecordTarget == target {
+				update = true
+
+				updateOpt := dnsService.NewUpdateResourceRecordOptions(p.config.InstanceID, ZONEIDFORTESTING, *resourceRecord.ID)
+				updateOpt.SetName(DNSName)
+				if record.Spec.RecordType == iov1.CNAMERecordType {
+					inputRData, error := dnsService.NewResourceRecordUpdateInputRdataRdataCnameRecord(target)
+					if error != nil {
+						return fmt.Errorf("createOrUpdateDNSRecord: failed to create CNAME inputRData for the dns record: %w", err)
+					}
+					updateOpt.SetRdata(inputRData)
+				} else {
+					inputRData, error := dnsService.NewResourceRecordUpdateInputRdataRdataARecord(target)
+					if error != nil {
+						return fmt.Errorf("createOrUpdateDNSRecord: failed to create A inputRData for the dns record: %w", err)
+					}
+					updateOpt.SetRdata(inputRData)
+				}
+				updateOpt.SetTTL(60)
+				_, _, err := dnsService.UpdateResourceRecord(updateOpt)
+				if err != nil {
+					return fmt.Errorf("createOrUpdateDNSRecord: failed to update the dns record: %w", err)
+				}
+				log.Info("updated DNS record", "record", record.Spec, "zone", zone, "target", target)
+			}
+
 		}
-		if result == nil {
-			return fmt.Errorf("createOrUpdateDNSRecord: invalid result")
-		}
-		if result.ID == nil {
-			createOpt := dnsService.NewCreateResourceRecordOptions(p.config.InstanceID, zone.ID)
-			createOpt.SetName(record.Spec.DNSName)
+		if !update {
+			createOpt := dnsService.NewCreateResourceRecordOptions(p.config.InstanceID, ZONEIDFORTESTING)
+			createOpt.SetName(DNSName)
 			createOpt.SetType(string(record.Spec.RecordType))
 
 			if record.Spec.RecordType == iov1.CNAMERecordType {
@@ -210,34 +268,12 @@ func (p *Provider) createOrUpdateDNSRecord(record *iov1.DNSRecord, zone configv1
 				}
 				createOpt.SetRdata(inputRData)
 			}
-			createOpt.SetTTL(record.Spec.RecordTTL)
+			createOpt.SetTTL(60)
 			_, _, err := dnsService.CreateResourceRecord(createOpt)
 			if err != nil {
 				return fmt.Errorf("createOrUpdateDNSRecord: failed to create the dns record: %w", err)
 			}
 			log.Info("created DNS record", "record", record.Spec, "zone", zone, "target", target)
-		} else {
-			updateOpt := dnsService.NewUpdateResourceRecordOptions(p.config.InstanceID, zone.ID, *result.ID)
-			updateOpt.SetName(record.Spec.DNSName)
-			if record.Spec.RecordType == iov1.CNAMERecordType {
-				inputRData, error := dnsService.NewResourceRecordUpdateInputRdataRdataCnameRecord(target)
-				if error != nil {
-					return fmt.Errorf("createOrUpdateDNSRecord: failed to create CNAME inputRData for the dns record: %w", err)
-				}
-				updateOpt.SetRdata(inputRData)
-			} else {
-				inputRData, error := dnsService.NewResourceRecordUpdateInputRdataRdataARecord(target)
-				if error != nil {
-					return fmt.Errorf("createOrUpdateDNSRecord: failed to create A inputRData for the dns record: %w", err)
-				}
-				updateOpt.SetRdata(inputRData)
-			}
-			updateOpt.SetTTL(record.Spec.RecordTTL)
-			_, _, err := dnsService.UpdateResourceRecord(updateOpt)
-			if err != nil {
-				return fmt.Errorf("createOrUpdateDNSRecord: failed to update the dns record: %w", err)
-			}
-			log.Info("updated DNS record", "record", record.Spec, "zone", zone, "target", target)
 		}
 	}
 
