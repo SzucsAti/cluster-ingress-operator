@@ -17,6 +17,8 @@ import (
 	awsdns "github.com/openshift/cluster-ingress-operator/pkg/dns/aws"
 	azuredns "github.com/openshift/cluster-ingress-operator/pkg/dns/azure"
 	gcpdns "github.com/openshift/cluster-ingress-operator/pkg/dns/gcp"
+	ibmprivatedns "github.com/openshift/cluster-ingress-operator/pkg/dns/ibm/private"
+	ibmpublicdns "github.com/openshift/cluster-ingress-operator/pkg/dns/ibm/public"
 	logf "github.com/openshift/cluster-ingress-operator/pkg/log"
 	"github.com/openshift/cluster-ingress-operator/pkg/manifests"
 	"github.com/openshift/cluster-ingress-operator/pkg/operator/controller"
@@ -260,10 +262,10 @@ func (r *reconciler) publishRecordToZones(zones []configv1.DNSZone, record *iov1
 		// Only publish the record if the DNSRecord has been modified
 		// (which would mean the target could have changed) or its
 		// status does not indicate that it has already been published.
-		// if record.Generation == record.Status.ObservedGeneration && recordIsAlreadyPublishedToZone(record, &zone) {
-		// 	log.Info("skipping zone to which the DNS record is already published", "record", record.Spec, "dnszone", zone)
-		// 	continue
-		// }
+		if record.Generation == record.Status.ObservedGeneration && recordIsAlreadyPublishedToZone(record, &zone) {
+			log.Info("skipping zone to which the DNS record is already published", "record", record.Spec, "dnszone", zone)
+			continue
+		}
 
 		condition := iov1.DNSZoneCondition{
 			Status:             string(operatorv1.ConditionUnknown),
@@ -563,19 +565,11 @@ func (r *reconciler) createDNSProvider(dnsConfig *configv1.DNS, platformStatus *
 		}
 		dnsProvider = provider
 	case configv1.IBMCloudPlatformType:
-<<<<<<< HEAD
 		if infraStatus.ControlPlaneTopology == configv1.ExternalTopologyMode {
 			log.Info("using fake DNS provider because cluster's ControlPlaneTopology is External")
 			return &dns.FakeProvider{}, nil
 		}
-		if platformStatus.IBMCloud.CISInstanceCRN == "" {
-			return nil, fmt.Errorf("missing cis instance crn")
-		}
-=======
-		// https://github.ibm.com/alchemy-containers/armada-ipi-upi-planning/issues/125
-		publish := "Internal"
 
->>>>>>> 54ff6384 (Temporary)
 		zones := []string{}
 		if dnsConfig.Spec.PrivateZone != nil {
 			zones = append(zones, dnsConfig.Spec.PrivateZone.ID)
@@ -583,18 +577,14 @@ func (r *reconciler) createDNSProvider(dnsConfig *configv1.DNS, platformStatus *
 		if dnsConfig.Spec.PublicZone != nil {
 			zones = append(zones, dnsConfig.Spec.PublicZone.ID)
 		}
-<<<<<<< HEAD
-		provider, err := ibmdns.NewProvider(ibmdns.Config{
-			APIKey:    string(creds.Data["ibmcloud_api_key"]),
-			CISCRN:    platformStatus.IBMCloud.CISInstanceCRN,
-			Zones:     zones,
-			UserAgent: userAgent,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to create IBM DNS manager: %v", err)
-=======
+
+		publish := "Internal"
 
 		if publish == "External" {
+			if platformStatus.IBMCloud.CISInstanceCRN == "" {
+				return nil, fmt.Errorf("missing cis instance crn")
+			}
+
 			log.Info("init public dns provider", "publish", publish)
 			if platformStatus.IBMCloud.CISInstanceCRN == "" {
 				return nil, fmt.Errorf("missing cis instance crn")
@@ -624,7 +614,6 @@ func (r *reconciler) createDNSProvider(dnsConfig *configv1.DNS, platformStatus *
 				return nil, fmt.Errorf("failed to create IBM DNS manager: %v", err)
 			}
 			dnsProvider = provider
->>>>>>> 54ff6384 (Temporary)
 		}
 	default:
 		dnsProvider = &dns.FakeProvider{}
