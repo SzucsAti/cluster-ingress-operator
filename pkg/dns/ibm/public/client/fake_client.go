@@ -67,7 +67,7 @@ func (fdc FakeDnsClient) DeleteDnsRecord(deleteDnsRecordOptions *dnsrecordsv1.De
 	resp := &core.DetailedResponse{
 		StatusCode: fdc.DeleteDnsRecordInputOutput.OutputStatusCode,
 		Headers:    map[string][]string{},
-		Result:     result,
+		Result:     "result",
 		RawResult:  []byte{},
 	}
 

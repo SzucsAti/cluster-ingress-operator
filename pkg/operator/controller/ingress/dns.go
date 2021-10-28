@@ -109,6 +109,7 @@ func desiredWildcardDNSRecord(ic *operatorv1.IngressController, service *corev1.
 	//remove later
 	target = "1.2.3.4"
 	recordType = iov1.ARecordType
+	domain = "*.apps.ipi-ingress-test.szucsati-ipi.com"
 
 	trueVar := true
 	return true, &iov1.DNSRecord{
