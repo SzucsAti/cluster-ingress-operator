@@ -28,13 +28,10 @@ type UpdateDnsRecordInputOutput struct {
 }
 
 type ListAllDnsRecordsInputOutput struct {
-	RecordID         string
+	RecordName       string
+	RecordTarget     string
 	OutputError      error
 	OutputStatusCode int
-}
-
-type rData struct {
-	ip string
 }
 
 func NewFake() (*FakeDnsClient, error) {
@@ -51,11 +48,10 @@ func (FakeDnsClient) NewListResourceRecordsOptions(instanceID string, dnszoneID 
 }
 func (fdc FakeDnsClient) ListResourceRecords(listResourceRecordsOptions *dnssvcsv1.ListResourceRecordsOptions) (result *dnssvcsv1.ListResourceRecords, response *core.DetailedResponse, err error) {
 	fakeListDnsrecordsResp := &dnssvcsv1.ListResourceRecords{}
-
 	recordType := string(iov1.ARecordType)
-	//rData := map[string]string{"ip": "1.2.3.4"}
-	rData := rData{ip: "1.2.3.4"}
-	fakeListDnsrecordsResp.ResourceRecords = append(fakeListDnsrecordsResp.ResourceRecords, dnssvcsv1.ResourceRecord{ID: &fdc.ListAllDnsRecordsInputOutput.RecordID, Type: &recordType, Rdata: rData})
+	rData := map[string]interface{}{"ip": fdc.ListAllDnsRecordsInputOutput.RecordTarget}
+
+	fakeListDnsrecordsResp.ResourceRecords = append(fakeListDnsrecordsResp.ResourceRecords, dnssvcsv1.ResourceRecord{ID: &fdc.ListAllDnsRecordsInputOutput.RecordName, Name: &fdc.ListAllDnsRecordsInputOutput.RecordName, Type: &recordType, Rdata: rData})
 
 	resp := &core.DetailedResponse{
 		StatusCode: fdc.ListAllDnsRecordsInputOutput.OutputStatusCode,
@@ -85,16 +81,28 @@ func (fdc FakeDnsClient) DeleteResourceRecord(deleteResourceRecordOptions *dnssv
 	return resp, fdc.DeleteDnsRecordInputOutput.OutputError
 }
 func (FakeDnsClient) NewUpdateResourceRecordOptions(instanceID string, dnszoneID string, recordID string) *dnssvcsv1.UpdateResourceRecordOptions {
-	return nil
+	return &dnssvcsv1.UpdateResourceRecordOptions{InstanceID: &instanceID, DnszoneID: &dnszoneID, RecordID: &recordID}
 }
 func (FakeDnsClient) NewResourceRecordUpdateInputRdataRdataCnameRecord(cname string) (_model *dnssvcsv1.ResourceRecordUpdateInputRdataRdataCnameRecord, err error) {
-	return nil, nil
+	return &dnssvcsv1.ResourceRecordUpdateInputRdataRdataCnameRecord{Cname: &cname}, nil
 }
 func (FakeDnsClient) NewResourceRecordUpdateInputRdataRdataARecord(ip string) (_model *dnssvcsv1.ResourceRecordUpdateInputRdataRdataARecord, err error) {
-	return nil, nil
+	return &dnssvcsv1.ResourceRecordUpdateInputRdataRdataARecord{Ip: &ip}, nil
 }
-func (FakeDnsClient) UpdateResourceRecord(updateResourceRecordOptions *dnssvcsv1.UpdateResourceRecordOptions) (result *dnssvcsv1.ResourceRecord, response *core.DetailedResponse, err error) {
-	return nil, nil, nil
+func (fdc FakeDnsClient) UpdateResourceRecord(updateResourceRecordOptions *dnssvcsv1.UpdateResourceRecordOptions) (result *dnssvcsv1.ResourceRecord, response *core.DetailedResponse, err error) {
+	if fdc.UpdateDnsRecordInputOutput.InputId != *updateResourceRecordOptions.RecordID {
+		return nil, nil, errors.New("updateDnsRecord: inputs don't match")
+	}
+
+	resp := &core.DetailedResponse{
+		StatusCode: fdc.UpdateDnsRecordInputOutput.OutputStatusCode,
+		Headers:    map[string][]string{},
+		Result:     response,
+		RawResult:  []byte{},
+	}
+
+	fdc.CallHistory[*updateResourceRecordOptions.RecordID] = "PUT"
+	return nil, resp, fdc.UpdateDnsRecordInputOutput.OutputError
 }
 func (FakeDnsClient) NewCreateResourceRecordOptions(instanceID string, dnszoneID string) *dnssvcsv1.CreateResourceRecordOptions {
 	return nil

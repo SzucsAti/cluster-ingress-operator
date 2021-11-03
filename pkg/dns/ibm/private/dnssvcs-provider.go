@@ -109,18 +109,14 @@ func (p *Provider) Delete(record *iov1.DNSRecord, zone configv1.DNSZone) error {
 		for _, resourceRecord := range result.ResourceRecords {
 
 			var resourceRecordTarget string
-			if *resourceRecord.Type == "CNAME" {
-				rData, ok := resourceRecord.Rdata.(map[string]interface{})
-				if !ok {
-					return fmt.Errorf("delete: failed to get resource data: %v", resourceRecord.Rdata)
-				}
+			rData, ok := resourceRecord.Rdata.(map[string]interface{})
+			if !ok {
+				return fmt.Errorf("delete: failed to get resource data: %v", resourceRecord.Rdata)
+			}
+			if *resourceRecord.Type == string(iov1.CNAMERecordType) {
 				resourceRecordTarget = fmt.Sprint(rData["cname"])
 			}
-			if *resourceRecord.Type == "A" {
-				rData, ok := resourceRecord.Rdata.(map[string]interface{})
-				if !ok {
-					return fmt.Errorf("delete: A record - failed to get resource data: %v", resourceRecord.Rdata)
-				}
+			if *resourceRecord.Type == string(iov1.ARecordType) {
 				resourceRecordTarget = fmt.Sprint(rData["ip"])
 			}
 
@@ -199,7 +195,7 @@ func (p *Provider) createOrUpdateDNSRecord(record *iov1.DNSRecord, zone configv1
 	}
 
 	for _, target := range record.Spec.Targets {
-		update := false
+		updated := false
 
 		listResult, response, err := dnsService.ListResourceRecords(listOpt)
 		if err != nil {
@@ -214,25 +210,19 @@ func (p *Provider) createOrUpdateDNSRecord(record *iov1.DNSRecord, zone configv1
 		for _, resourceRecord := range listResult.ResourceRecords {
 
 			var resourceRecordTarget string
-			if *resourceRecord.Type == "CNAME" {
-				rData, ok := resourceRecord.Rdata.(map[string]interface{})
-				if !ok {
-					return fmt.Errorf("createOrUpdateDNSRecord: failed to get resource data: %v", resourceRecord.Rdata)
-				}
+			rData, ok := resourceRecord.Rdata.(map[string]interface{})
+			if !ok {
+				return fmt.Errorf("createOrUpdateDNSRecord: failed to get resource data: %v", resourceRecord.Rdata)
+			}
+			if *resourceRecord.Type == string(iov1.CNAMERecordType) {
 				resourceRecordTarget = fmt.Sprint(rData["cname"])
 			}
-			if *resourceRecord.Type == "A" {
-				fmt.Println("testing")
-				fmt.Println(resourceRecord.Rdata)
-				rData, ok := resourceRecord.Rdata.(map[string]interface{})
-				if !ok {
-					return fmt.Errorf("createOrUpdateDNSRecord: A record - failed to get resource data: %v", resourceRecord.Rdata)
-				}
+			if *resourceRecord.Type == string(iov1.ARecordType) {
 				resourceRecordTarget = fmt.Sprint(rData["ip"])
 			}
 
 			if *resourceRecord.Name == DNSName && resourceRecordTarget == target {
-				update = true
+				updated = true
 
 				updateOpt := dnsService.NewUpdateResourceRecordOptions(p.config.InstanceID, ZONEIDFORTESTING, *resourceRecord.ID)
 				updateOpt.SetName(DNSName)
@@ -258,7 +248,7 @@ func (p *Provider) createOrUpdateDNSRecord(record *iov1.DNSRecord, zone configv1
 			}
 
 		}
-		if !update {
+		if !updated {
 			createOpt := dnsService.NewCreateResourceRecordOptions(p.config.InstanceID, ZONEIDFORTESTING)
 			createOpt.SetName(DNSName)
 			createOpt.SetType(string(record.Spec.RecordType))

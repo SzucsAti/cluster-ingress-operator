@@ -578,14 +578,15 @@ func (r *reconciler) createDNSProvider(dnsConfig *configv1.DNS, platformStatus *
 			zones = append(zones, dnsConfig.Spec.PublicZone.ID)
 		}
 
-		publish := "Internal"
+		publish_tmp := "Internal"
+		dsnsvcsInstanceID_tmp := "7c786ae5-3eeb-4a99-bd9c-35e199eb85b3"
 
-		if publish == "External" {
+		if publish_tmp == "External" {
 			if platformStatus.IBMCloud.CISInstanceCRN == "" {
 				return nil, fmt.Errorf("missing cis instance crn")
 			}
 
-			log.Info("init public dns provider", "publish", publish)
+			log.Info("init public dns provider", "publish", publish_tmp)
 			if platformStatus.IBMCloud.CISInstanceCRN == "" {
 				return nil, fmt.Errorf("missing cis instance crn")
 			}
@@ -600,13 +601,13 @@ func (r *reconciler) createDNSProvider(dnsConfig *configv1.DNS, platformStatus *
 			}
 			dnsProvider = provider
 		} else {
-			log.Info("init private dns provider", "publish", publish)
-			// if platformStatus.IBMCloud.DNSSERVICESInstanceID == "" {
-			// 	return nil, fmt.Errorf("missing dns services instance crn")
-			// }
+			log.Info("init private dns provider", "publish", publish_tmp)
+			if dsnsvcsInstanceID_tmp == "" {
+				return nil, fmt.Errorf("missing dns services instance crn")
+			}
 			provider, err := ibmprivatedns.NewProvider(ibmprivatedns.Config{
 				APIKey:     string(creds.Data["ibmcloud_api_key"]),
-				InstanceID: "7c786ae5-3eeb-4a99-bd9c-35e199eb85b3",
+				InstanceID: dsnsvcsInstanceID_tmp,
 				Zones:      zones,
 				UserAgent:  userAgent,
 			})
