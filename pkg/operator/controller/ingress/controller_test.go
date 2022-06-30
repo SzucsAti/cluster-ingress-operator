@@ -1005,6 +1005,52 @@ func TestIsProxyProtocolNeeded(t *testing.T) {
 			platform:    &awsPlatform,
 			expect:      false,
 		},
+		{
+			description: "ibmcloud POC",
+			strategy: &operatorv1.EndpointPublishingStrategy{
+				Type: operatorv1.LoadBalancerServiceStrategyType,
+				LoadBalancer: &operatorv1.LoadBalancerStrategy{
+					ProviderParameters: &operatorv1.ProviderLoadBalancerParameters{
+						Type: operatorv1.IBMLoadBalancerProvider,
+						IBM: &operatorv1.IBMLoadBalancerParameters{
+							EnableFeatures: &operatorv1.IBMEnableFeatures{
+								ProxyProtocol: true,
+							},
+						},
+					},
+				},
+			},
+			platform: &configv1.PlatformStatus{
+				Type: configv1.IBMCloudPlatformType,
+			},
+			expect: true,
+		},
+		{
+			description: "ibmcloud POC empty",
+			strategy: &operatorv1.EndpointPublishingStrategy{
+				Type: operatorv1.LoadBalancerServiceStrategyType,
+			},
+			platform: &configv1.PlatformStatus{
+				Type: configv1.IBMCloudPlatformType,
+			},
+			expect: false,
+		},
+		{
+			description: "ibmcloud POC empty",
+			strategy: &operatorv1.EndpointPublishingStrategy{
+				Type: operatorv1.LoadBalancerServiceStrategyType,
+				LoadBalancer: &operatorv1.LoadBalancerStrategy{
+					ProviderParameters: &operatorv1.ProviderLoadBalancerParameters{
+						Type: operatorv1.IBMLoadBalancerProvider,
+						IBM:  &operatorv1.IBMLoadBalancerParameters{},
+					},
+				},
+			},
+			platform: &configv1.PlatformStatus{
+				Type: configv1.IBMCloudPlatformType,
+			},
+			expect: false,
+		},
 	}
 
 	for _, tc := range testCases {

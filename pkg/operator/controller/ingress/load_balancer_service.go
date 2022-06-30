@@ -387,6 +387,14 @@ func desiredLoadBalancerService(ci *operatorv1.IngressController, deploymentRef 
 			// LB relies on iptable rules kube-proxy puts in to send traffic from the VIP node to the cluster
 			// If policy is local, traffic is only sent to pods on the local node, as such Cluster enables traffic to flow to  all the pods in the cluster
 			service.Spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeCluster
+
+			if proxyNeeded, err := IsProxyProtocolNeeded(ci, platform); err != nil {
+				return false, nil, fmt.Errorf("failed to determine if proxy protocol is proxyNeeded for ingresscontroller %q: %v", ci.Name, err)
+			} else if proxyNeeded {
+				log.Info("proxyNeeded", "checking..", proxyNeeded)
+				service.Annotations["service.kubernetes.io/ibm-load-balancer-cloud-provider-enable-features"] = "proxy-protocol"
+			}
+
 		case configv1.AlibabaCloudPlatformType:
 			if !isInternal {
 				service.Annotations[alibabaCloudLBAddressTypeAnnotation] = alibabaCloudLBAddressTypeInternet

@@ -848,13 +848,23 @@ func IsProxyProtocolNeeded(ic *operatorv1.IngressController, platform *configv1.
 	case operatorv1.LoadBalancerServiceStrategyType:
 		// For now, check if we are on AWS. This can really be done for for any external
 		// [cloud] LBs that support the proxy protocol.
-		if platform.Type == configv1.AWSPlatformType {
+		switch platform.Type {
+		case configv1.AWSPlatformType:
 			if ic.Status.EndpointPublishingStrategy.LoadBalancer == nil ||
 				ic.Status.EndpointPublishingStrategy.LoadBalancer.ProviderParameters == nil ||
 				ic.Status.EndpointPublishingStrategy.LoadBalancer.ProviderParameters.AWS == nil ||
 				ic.Status.EndpointPublishingStrategy.LoadBalancer.ProviderParameters.Type == operatorv1.AWSLoadBalancerProvider &&
 					ic.Status.EndpointPublishingStrategy.LoadBalancer.ProviderParameters.AWS.Type == operatorv1.AWSClassicLoadBalancer {
 				return true, nil
+			}
+		case configv1.IBMCloudPlatformType:
+			if ic.Status.EndpointPublishingStrategy.LoadBalancer != nil &&
+				ic.Status.EndpointPublishingStrategy.LoadBalancer.ProviderParameters != nil &&
+				ic.Status.EndpointPublishingStrategy.LoadBalancer.ProviderParameters.IBM != nil &&
+				ic.Status.EndpointPublishingStrategy.LoadBalancer.ProviderParameters.IBM.EnableFeatures != nil {
+
+				log.Info("IsProxyProtocolNeeded inside if")
+				return ic.Status.EndpointPublishingStrategy.LoadBalancer.ProviderParameters.IBM.EnableFeatures.ProxyProtocol, nil
 			}
 		}
 	case operatorv1.HostNetworkStrategyType:
