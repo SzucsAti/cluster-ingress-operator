@@ -90,6 +90,10 @@ const (
 	// IP as private.
 	iksLBScopePrivate = "private"
 
+	// iksLBEnableFeatures is the annotation used on a service to enable features
+	// on the load balancer.
+	iksLBEnableFeatures = "service.kubernetes.io/ibm-load-balancer-cloud-provider-enable-features"
+
 	// azureInternalLBAnnotation is the annotation used on a service to specify an Azure
 	// load balancer as being internal.
 	azureInternalLBAnnotation = "service.beta.kubernetes.io/azure-load-balancer-internal"
@@ -323,10 +327,9 @@ func desiredLoadBalancerService(ci *operatorv1.IngressController, deploymentRef 
 	if service.Annotations == nil {
 		service.Annotations = map[string]string{}
 	}
-	if proxyNeeded, err := IsProxyProtocolNeeded(ci, platform); err != nil {
+	proxyNeeded, err := IsProxyProtocolNeeded(ci, platform)
+	if err != nil {
 		return false, nil, fmt.Errorf("failed to determine if proxy protocol is proxyNeeded for ingresscontroller %q: %v", ci.Name, err)
-	} else if proxyNeeded {
-		service.Annotations[awsLBProxyProtocolAnnotation] = "*"
 	}
 
 	if platform != nil {
@@ -365,6 +368,10 @@ func desiredLoadBalancerService(ci *operatorv1.IngressController, deploymentRef 
 				service.Annotations[awsLBHealthCheckIntervalAnnotation] = awsLBHealthCheckIntervalDefault
 			}
 
+			if proxyNeeded {
+				service.Annotations[awsLBProxyProtocolAnnotation] = "*"
+			}
+
 			if platform.AWS != nil && len(platform.AWS.ResourceTags) > 0 {
 				var additionalTags []string
 				for _, userTag := range platform.AWS.ResourceTags {
@@ -388,11 +395,8 @@ func desiredLoadBalancerService(ci *operatorv1.IngressController, deploymentRef 
 			// If policy is local, traffic is only sent to pods on the local node, as such Cluster enables traffic to flow to  all the pods in the cluster
 			service.Spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeCluster
 
-			if proxyNeeded, err := IsProxyProtocolNeeded(ci, platform); err != nil {
-				return false, nil, fmt.Errorf("failed to determine if proxy protocol is proxyNeeded for ingresscontroller %q: %v", ci.Name, err)
-			} else if proxyNeeded {
-				log.Info("proxyNeeded", "checking..", proxyNeeded)
-				service.Annotations["service.kubernetes.io/ibm-load-balancer-cloud-provider-enable-features"] = "proxy-protocol"
+			if proxyNeeded {
+				service.Annotations[iksLBEnableFeatures] = "proxy-protocol"
 			}
 
 		case configv1.AlibabaCloudPlatformType:
